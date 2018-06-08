@@ -1,6 +1,6 @@
 {
   "name": "@bitcointrade/react-validity",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "repository": "git@github.com:cryptocurrencytrader/react-validity.git",
   "author": "Rafael Tavares <rafael@tavares.email>",
   "license": "MIT",
