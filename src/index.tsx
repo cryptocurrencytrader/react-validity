@@ -82,7 +82,7 @@ function validity<P>(WrappedComponent: React.ComponentType<WrappedComponentProps
       formEmitter.off("validate", this.validateHandler);
     }
 
-    private getValidations(): ValidationsProp {
+    private getValidations = () => {
       return this.props.validations as ValidationsProp;
     }
 
