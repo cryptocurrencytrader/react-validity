@@ -11,11 +11,13 @@ export { EventEmitter, Provider, ProviderValue };
 export type AllowedElements = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 export type Validation = [string, (value: string) => boolean];
 
+export type ValidationValue = [boolean, string];
+
 export interface ValidationEvent {
+  value: ValidationValue;
   preventDefault(message: string): void;
 }
 
-export type ValidationValue = [boolean, string];
 export type ValidationsProp = Validation[] | undefined;
 
 export type ElementValue = (
@@ -26,6 +28,11 @@ export type ElementValue = (
 
 export type ValidateFn = () => boolean;
 export type PristineItFn = () => void;
+
+interface TriggerComponentValidity {
+  (actionName: "pristine"): boolean;
+  (actionName: "validate", message: string): boolean;
+}
 
 export interface ValidityPublicProps {
   validations?: ValidationsProp;
@@ -112,11 +119,21 @@ function withValidity<P>(
       }
     }
 
-    private setComponentValidity(message: string): boolean {
-      const event: ValidationEvent = { preventDefault: (value) => message = value };
+    private triggerComponentValidity: TriggerComponentValidity = (
+      actionName: "pristine" | "validate", message: string = "",
+    ) => {
+      const preventDefaultFn: ValidationEvent["preventDefault"] = (value) => {
+        message = value;
+      };
+
       const validationValue: ValidationValue = [!message, message];
 
-      this.state.validity.eventEmitter.emit("validation", event, validationValue);
+      const event: ValidationEvent = {
+        preventDefault: preventDefaultFn,
+        value: validationValue,
+      };
+
+      this.state.validity.eventEmitter.emit(actionName, event);
       this.element!.setCustomValidity(message);
 
       const valid = !message;
@@ -133,7 +150,7 @@ function withValidity<P>(
     }
 
     public pristineIt: PristineItFn = () => {
-      this.setComponentValidity("");
+      this.triggerComponentValidity("pristine");
     }
 
     public validate: ValidateFn = () => {
@@ -161,7 +178,7 @@ function withValidity<P>(
         break;
       }
 
-      return this.setComponentValidity(validationMessage);
+      return this.triggerComponentValidity("validate", validationMessage);
     }
 
     private pristineHandler = (): void => {
