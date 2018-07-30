@@ -17,7 +17,6 @@ export interface ValidationEvent {
 
 export type ValidationValue = [boolean, string];
 export type ValidationsProp = Validation[] | undefined;
-export type ValidationsGetter = () => ValidationsProp;
 
 export type ElementValue = (
   Pick<React.InputHTMLAttributes<HTMLInputElement>, "value">["value"] |
@@ -26,15 +25,15 @@ export type ElementValue = (
 );
 
 export interface ValidityPublicProps {
-  validations?: ValidationsProp | ValidationsGetter;
+  validations?: ValidationsProp;
   value?: ElementValue;
 }
 
 export interface ValidityInjectedProps extends Pick<ValidityPublicProps, "validations"> {
   validity: {
     eventEmitter: EventEmitter;
-    message: string;
-    valid: boolean;
+    message?: string;
+    valid?: boolean;
   };
 }
 
@@ -44,7 +43,14 @@ export type WrappedComponentType<P> = React.ComponentType<WrappedComponentProps<
 type ValidityComponentProps<P> = WrappedComponentProps<P> & Record<"validityContext", ProviderValue>;
 type State = Pick<ValidityInjectedProps, "validity">;
 
-function validity<P>(WrappedComponent: React.ComponentType<WrappedComponentProps<P>>) {
+export interface ValidityConfig {
+  subscribe?: boolean | Array<"validate" | "pristine">;
+}
+
+function withValidity<P>(
+  WrappedComponent: React.ComponentType<WrappedComponentProps<P>>,
+  { subscribe = true }: ValidityConfig = {},
+) {
   class Validity extends React.Component<ValidityComponentProps<P>, State> {
     public static displayName: string = `InjectedValidity(${getDisplayName(WrappedComponent)})`;
 
@@ -71,19 +77,25 @@ function validity<P>(WrappedComponent: React.ComponentType<WrappedComponentProps
 
       const { eventEmitter: formEmitter } = this.props.validityContext;
 
-      formEmitter.on("pristine", this.pristineHandler);
-      formEmitter.on("validate", this.validateHandler);
+      if (subscribe || (Array.isArray(subscribe) && subscribe.includes("pristine"))) {
+        formEmitter.on("pristine", this.pristineHandler);
+      }
+
+      if (subscribe || (Array.isArray(subscribe) && subscribe.includes("validate"))) {
+        formEmitter.on("validate", this.validateHandler);
+      }
     }
 
     public componentWillUnmount() {
       const { eventEmitter: formEmitter } = this.props.validityContext;
 
-      formEmitter.off("pristine", this.pristineHandler);
-      formEmitter.off("validate", this.validateHandler);
-    }
+      if (subscribe || (Array.isArray(subscribe) && subscribe.includes("pristine"))) {
+        formEmitter.off("pristine", this.pristineHandler);
+      }
 
-    private getValidations = () => {
-      return this.props.validations as ValidationsProp;
+      if (subscribe || (Array.isArray(subscribe) && subscribe.includes("validate"))) {
+        formEmitter.off("validate", this.validateHandler);
+      }
     }
 
     private setValidity(message: string): void {
@@ -109,14 +121,21 @@ function validity<P>(WrappedComponent: React.ComponentType<WrappedComponentProps
     private validateHandler = (): void => {
       const validations = this.props.validations as ValidationsProp;
 
-      if (!validations) {
-        return;
-      }
-
       let validationMessage = "";
 
-      for (const [message, validateFn] of validations) {
-        if (validateFn.call(this.element!, this.element!.value)) {
+      for (const [message, validateFn] of validations || []) {
+        const element = this.element!;
+        let value = element.value;
+
+        if (
+          element.tagName.toLowerCase() === "input" &&
+          element.type === "file" &&
+          element.dataset.hasOwnProperty("validityValue")
+        ) {
+          value = element.dataset.validityValue!;
+        }
+
+        if (validateFn.call(element, value)) {
           continue;
         }
 
@@ -132,7 +151,7 @@ function validity<P>(WrappedComponent: React.ComponentType<WrappedComponentProps
 
       const validityProps: ValidityInjectedProps = {
         ...this.state,
-        validations: this.getValidations,
+        validations: this.props.validations,
       };
 
       return <WrappedComponent {...props} {...validityProps}/>;
@@ -143,6 +162,10 @@ function validity<P>(WrappedComponent: React.ComponentType<WrappedComponentProps
   return Validity;
 }
 
-export default function validityWithConsumer<P>(WrappedComponent: WrappedComponentType<P>): React.ComponentClass<P> {
-  return consumerHOC({ inject: "validityContext" })(validity(WrappedComponent));
+export default function validityWithConsumer(config?: ValidityConfig) {
+  return <P extends {}>(WrappedComponent: WrappedComponentType<P>): React.ComponentClass<WrappedComponentProps<P>> => {
+    return consumerHOC({ inject: "validityContext" })(
+      withValidity(WrappedComponent, config),
+    );
+  };
 }
