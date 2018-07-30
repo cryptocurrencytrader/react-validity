@@ -24,6 +24,9 @@ export type ElementValue = (
   Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value">["value"]
 );
 
+export type ValidateFn = () => boolean;
+export type PristineItFn = () => void;
+
 export interface ValidityPublicProps {
   validations?: ValidationsProp;
   value?: ElementValue;
@@ -33,7 +36,9 @@ export interface ValidityInjectedProps extends Pick<ValidityPublicProps, "valida
   validity: {
     eventEmitter: EventEmitter;
     message?: string;
+    pristineIt: PristineItFn;
     valid?: boolean;
+    validate: ValidateFn;
   };
 }
 
@@ -56,13 +61,22 @@ function withValidity<P>(
 
     private element: AllowedElements | null = null;
 
-    public state: State = {
-      validity: {
-        eventEmitter: new EventEmitter(),
-        message: "",
-        valid: true,
-      },
-    };
+    public state: State;
+
+    public constructor(...args: any[]) {
+      // @ts-ignore
+      super(...args);
+
+      this.state = {
+        validity: {
+          eventEmitter: new EventEmitter(),
+          message: "",
+          pristineIt: this.pristineIt,
+          valid: true,
+          validate: this.validate,
+        },
+      };
+    }
 
     public componentDidMount() {
       const node = findDOMNode(this);
@@ -90,35 +104,39 @@ function withValidity<P>(
       const { eventEmitter: formEmitter } = this.props.validityContext;
 
       if (subscribe || (Array.isArray(subscribe) && subscribe.includes("pristine"))) {
-        formEmitter.off("pristine", this.pristineHandler);
+        formEmitter.off("pristine", this.pristineIt);
       }
 
       if (subscribe || (Array.isArray(subscribe) && subscribe.includes("validate"))) {
-        formEmitter.off("validate", this.validateHandler);
+        formEmitter.off("validate", this.validate);
       }
     }
 
-    private setValidity(message: string): void {
+    private setComponentValidity(message: string): boolean {
       const event: ValidationEvent = { preventDefault: (value) => message = value };
       const validationValue: ValidationValue = [!message, message];
 
       this.state.validity.eventEmitter.emit("validation", event, validationValue);
       this.element!.setCustomValidity(message);
 
+      const valid = !message;
+
       this.setState({
         validity: {
           ...this.state.validity,
           message,
-          valid: !message,
+          valid,
         },
       });
+
+      return valid;
     }
 
-    private pristineHandler = (): void => {
-      this.setValidity("");
+    public pristineIt: PristineItFn = () => {
+      this.setComponentValidity("");
     }
 
-    private validateHandler = (): void => {
+    public validate: ValidateFn = () => {
       const validations = this.props.validations as ValidationsProp;
 
       let validationMessage = "";
@@ -143,7 +161,15 @@ function withValidity<P>(
         break;
       }
 
-      this.setValidity(validationMessage);
+      return this.setComponentValidity(validationMessage);
+    }
+
+    private pristineHandler = (): void => {
+      this.pristineIt();
+    }
+
+    private validateHandler = (): void => {
+      this.validate();
     }
 
     public render() {
