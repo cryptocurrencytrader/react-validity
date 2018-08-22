@@ -1,7 +1,7 @@
 import React from "react";
-import EventEmitter from "wolfy87-eventemitter";
 
-import { Provider, ProviderValue } from "../context";
+import { Provider, ProviderValue } from "./context";
+import EventEmitter from "./EventEmitter";
 
 export type FormProps = React.FormHTMLAttributes<HTMLFormElement>;
 
