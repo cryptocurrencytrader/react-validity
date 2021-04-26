@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Provider, ProviderValue } from "./context";
+import ValidationsContext, { ProviderValue } from "./context";
 import EventEmitter from "./EventEmitter";
 
 export type FormProps = React.FormHTMLAttributes<HTMLFormElement>;
@@ -21,26 +21,29 @@ export default class Form extends React.Component<FormProps> {
     return this.formElementRef.current!.checkValidity();
   }
 
-  private submitHandler = (event: React.FormEvent<HTMLFormElement>, ...args: any[]): void => {
+  private submitHandler = (
+    event: React.FormEvent<HTMLFormElement>,
+    ...args: any[]
+  ): void => {
     event.preventDefault();
 
     if (this.validate() && this.props.onSubmit) {
       (this.props.onSubmit as any)(event, ...args);
     }
-  }
+  };
 
   public render() {
     const { noValidate = true, ...props } = { ...this.props };
 
     return (
-      <Provider value={this.providerValue}>
+      <ValidationsContext.Provider value={this.providerValue}>
         <form
           {...props}
           noValidate={noValidate}
           onSubmit={this.submitHandler}
           ref={this.formElementRef}
         />
-      </Provider>
+      </ValidationsContext.Provider>
     );
   }
 }
