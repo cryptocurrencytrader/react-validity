@@ -6,11 +6,8 @@
   "license": "MIT",
   "private": false,
   "main": "lib",
-  "files": [
-    "lib/*"
-  ],
   "scripts": {
-    "build": "tslint -c tslint.json 'src/**/*.ts' && rimraf lib && tsc --project tsconfig.prod.json && copy package.json lib && copy README.md lib",
+    "build": "tslint -c tslint.json 'src/**/*.ts' && rimraf lib && tsc --project tsconfig.prod.json",
     "test": "jest",
     "ts:test": "tslint -c tslint.json 'src/**/*.ts' && tsc --noEmit && yarn test"
   },
