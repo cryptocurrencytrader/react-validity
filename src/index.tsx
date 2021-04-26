@@ -3,12 +3,17 @@ import React from "react";
 import getDisplayName from "react-display-name";
 import { findDOMNode } from "react-dom";
 
-import { consumerHOC, Provider, ProviderValue } from "./context";
+import ValidationContext, { ProviderValue } from "./context";
 import EventEmitter from "./EventEmitter";
+
+const Provider = ValidationContext.Provider;
 
 export { EventEmitter, Provider, ProviderValue };
 
-export type AllowedElements = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+export type AllowedElements =
+  | HTMLInputElement
+  | HTMLTextAreaElement
+  | HTMLSelectElement;
 export type Validation = [string, (value: string) => boolean];
 
 export type ValidationValue = [boolean, string];
@@ -20,11 +25,10 @@ export interface ValidationEvent {
 
 export type ValidationsProp = Validation[] | undefined;
 
-export type ElementValue = (
-  Pick<React.InputHTMLAttributes<HTMLInputElement>, "value">["value"] |
-  Pick<React.SelectHTMLAttributes<HTMLSelectElement>, "value">["value"] |
-  Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value">["value"]
-);
+export type ElementValue =
+  | Pick<React.InputHTMLAttributes<HTMLInputElement>, "value">["value"]
+  | Pick<React.SelectHTMLAttributes<HTMLSelectElement>, "value">["value"]
+  | Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value">["value"];
 
 export type ValidateFn = () => boolean;
 export type PristineItFn = () => void;
@@ -39,7 +43,8 @@ export interface ValidityPublicProps {
   value?: ElementValue;
 }
 
-export interface ValidityInjectedProps extends Pick<ValidityPublicProps, "validations"> {
+export interface ValidityInjectedProps
+  extends Pick<ValidityPublicProps, "validations"> {
   validity: {
     eventEmitter: EventEmitter;
     message?: string;
@@ -49,10 +54,14 @@ export interface ValidityInjectedProps extends Pick<ValidityPublicProps, "valida
   };
 }
 
-export type WrappedComponentProps<P> = P & ValidityInjectedProps & ValidityPublicProps;
-export type WrappedComponentType<P> = React.ComponentType<WrappedComponentProps<P>>;
+export type WrappedComponentProps<P> = P &
+  ValidityInjectedProps &
+  ValidityPublicProps;
+export type WrappedComponentType<P> = React.ComponentType<
+  WrappedComponentProps<P>
+>;
 
-type ValidityComponentProps<P> = WrappedComponentProps<P> & Record<"validityContext", ProviderValue>;
+type ValidityComponentProps<P> = WrappedComponentProps<P>;
 type State = Pick<ValidityInjectedProps, "validity">;
 
 export interface ValidityConfig {
@@ -61,10 +70,15 @@ export interface ValidityConfig {
 
 function withValidity<P>(
   WrappedComponent: React.ComponentType<WrappedComponentProps<P>>,
-  { subscribe = true }: ValidityConfig = {},
+  { subscribe = true }: ValidityConfig = {}
 ) {
   class Validity extends React.Component<ValidityComponentProps<P>, State> {
-    public static displayName: string = `InjectedValidity(${getDisplayName(WrappedComponent)})`;
+    public static displayName: string = `InjectedValidity(${getDisplayName(
+      WrappedComponent
+    )})`;
+
+    public static contextType = ValidationContext;
+    public context!: React.ContextType<typeof ValidationContext>;
 
     private element: AllowedElements | null = null;
 
@@ -93,34 +107,49 @@ function withValidity<P>(
       }
 
       if (!this.element) {
-        throw new Error('No "input", "textarea" or "select" element was found under react-validity children tree');
+        throw new Error(
+          'No "input", "textarea" or "select" element was found under react-validity children tree'
+        );
       }
 
-      const { eventEmitter: formEmitter } = this.props.validityContext;
+      const { eventEmitter: formEmitter } = this.context;
 
-      if (subscribe || (Array.isArray(subscribe) && subscribe.includes("pristine"))) {
+      if (
+        subscribe ||
+        (Array.isArray(subscribe) && subscribe.includes("pristine"))
+      ) {
         formEmitter.on("pristine", this.pristineHandler);
       }
 
-      if (subscribe || (Array.isArray(subscribe) && subscribe.includes("validate"))) {
+      if (
+        subscribe ||
+        (Array.isArray(subscribe) && subscribe.includes("validate"))
+      ) {
         formEmitter.on("validate", this.validateHandler);
       }
     }
 
     public componentWillUnmount() {
-      const { eventEmitter: formEmitter } = this.props.validityContext;
+      const { eventEmitter: formEmitter } = this.context;
 
-      if (subscribe || (Array.isArray(subscribe) && subscribe.includes("pristine"))) {
+      if (
+        subscribe ||
+        (Array.isArray(subscribe) && subscribe.includes("pristine"))
+      ) {
         formEmitter.off("pristine", this.pristineIt);
       }
 
-      if (subscribe || (Array.isArray(subscribe) && subscribe.includes("validate"))) {
+      if (
+        subscribe ||
+        (Array.isArray(subscribe) && subscribe.includes("validate"))
+      ) {
         formEmitter.off("validate", this.validate);
       }
     }
 
     private triggerComponentValidity: TriggerComponentValidity = (
-      actionName: "pristine" | "validate", message: string = "",
+      actionName: "pristine" | "validate",
+      message: string = ""
     ) => {
       const preventDefaultFn: ValidationEvent["preventDefault"] = (value) => {
         message = value;
@@ -147,11 +176,11 @@ function withValidity<P>(
       });
 
       return valid;
-    }
+    };
 
     public pristineIt: PristineItFn = () => {
       this.triggerComponentValidity("pristine");
-    }
+    };
 
     public validate: ValidateFn = () => {
       const validations = this.props.validations as ValidationsProp;
@@ -179,15 +208,15 @@ function withValidity<P>(
       }
 
       return this.triggerComponentValidity("validate", validationMessage);
-    }
+    };
 
     private pristineHandler = (): void => {
       this.pristineIt();
-    }
+    };
 
     private validateHandler = (): void => {
       this.validate();
-    }
+    };
 
     public render() {
       const { validityContext: _, ...props } = this.props as any;
@@ -197,7 +226,7 @@ function withValidity<P>(
         validations: this.props.validations,
       };
 
-      return <WrappedComponent {...props} {...validityProps}/>;
+      return <WrappedComponent {...props} {...validityProps} />;
     }
   }
 
@@ -206,9 +235,9 @@ function withValidity<P>(
 }
 
 export default function validityWithConsumer(config?: ValidityConfig) {
-  return <P extends {}>(WrappedComponent: WrappedComponentType<P>): React.ComponentClass<WrappedComponentProps<P>> => {
-    return consumerHOC({ inject: "validityContext" })(
-      withValidity(WrappedComponent, config),
-    );
+  return <P extends {}>(
+    WrappedComponent: WrappedComponentType<P>
+  ): React.ComponentClass<WrappedComponentProps<P>> => {
+    return withValidity(WrappedComponent, config);
   };
 }
