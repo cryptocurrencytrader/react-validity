@@ -19,5 +19,6 @@
     "moduleResolution": "node",
     "baseUrl": "./",
     "esModuleInterop": true
-  }
+  },
+  "exclude": ["node_modules", "lib"]
 }
