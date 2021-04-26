@@ -5,10 +5,7 @@
   "author": "Rafael Tavares <rafael@tavares.email>",
   "license": "MIT",
   "private": false,
-  "main": "lib",
-  "files": [
-    "lib/*"
-  ],
+  "main": "lib/",
   "scripts": {
     "build": "tslint -c tslint.json 'src/**/*.ts' && rimraf lib && tsc --project tsconfig.prod.json && copy package.json lib && copy README.md lib",
     "test": "jest",
