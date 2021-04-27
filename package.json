@@ -1,14 +1,15 @@
 {
   "name": "@bitcointrade/react-validity",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "repository": "git@github.com:cryptocurrencytrader/react-validity.git",
   "author": "Rafael Tavares <rafael@tavares.email>",
   "license": "MIT",
   "private": false,
+  "main": "lib",
   "scripts": {
-    "run-publish": "tslint -c tslint.json 'src/**/*.ts' && rimraf .publishing && tsc --outDir .publishing && copy package.json .publishing && copy README.md .publishing && npm publish .publishing",
+    "build": "tslint -c tslint.json 'src/**/*.ts' && rimraf lib && tsc --project tsconfig.prod.json",
     "test": "jest",
-    "ts:test": "tslint -c tslint.json 'src/**/*.ts' && tsc --noEmit && yarn test"
+    "ci": "tslint -c tslint.json 'src/**/*.ts' && tsc --noEmit && yarn test"
   },
   "dependencies": {
     "@types/hoist-non-react-statics": "^3.3.1",
